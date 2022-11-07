@@ -10,6 +10,7 @@ import 'package:firebase_ui_oauth_facebook/firebase_ui_oauth_facebook.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'package:firebase_ui_oauth_twitter/firebase_ui_oauth_twitter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import 'firebase_options.dart';
 
@@ -45,7 +46,7 @@ Future<void> main() async {
     ),
   ]);
 
-  runApp(const FirebaseAuthUIExample());
+  runApp(FirebaseAuthUIExample());
 }
 
 // Overrides a label for en locale
@@ -59,7 +60,7 @@ class LabelOverrides extends DefaultLocalizations {
 }
 
 class FirebaseAuthUIExample extends StatelessWidget {
-  const FirebaseAuthUIExample({Key? key}) : super(key: key);
+  FirebaseAuthUIExample({Key? key}) : super(key: key);
 
   String get initialRoute {
     final auth = FirebaseAuth.instance;
@@ -84,20 +85,7 @@ class FirebaseAuthUIExample extends StatelessWidget {
       ),
     );
 
-    final mfaAction = AuthStateChangeAction<MFARequired>(
-      (context, state) async {
-        final nav = Navigator.of(context);
-
-        await startMFAVerification(
-          resolver: state.resolver,
-          context: context,
-        );
-
-        nav.pushReplacementNamed('/profile');
-      },
-    );
-
-    return MaterialApp(
+    return MaterialApp.router(
       theme: ThemeData(
         brightness: Brightness.light,
         visualDensity: VisualDensity.standard,
@@ -108,38 +96,74 @@ class FirebaseAuthUIExample extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(style: buttonStyle),
         outlinedButtonTheme: OutlinedButtonThemeData(style: buttonStyle),
       ),
-      initialRoute: initialRoute,
-      routes: {
-        '/': (context) {
+      routerConfig: _router,
+      title: 'Firebase UI demo',
+      debugShowCheckedModeBanner: false,
+      locale: const Locale('en'),
+      localizationsDelegates: [
+        FirebaseUILocalizations.withDefaultOverrides(const LabelOverrides()),
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        FirebaseUILocalizations.delegate,
+      ],
+    );
+  }
+
+  final GoRouter _router = GoRouter(
+    routes: <GoRoute>[
+      GoRoute(
+        path: '/',
+        builder: (BuildContext context, GoRouterState state) {
           return SignInScreen(
             actions: [
               ForgotPasswordAction((context, email) {
-                Navigator.pushNamed(
-                  context,
-                  '/forgot-password',
-                  arguments: {'email': email},
-                );
+                GoRouter.of(context)
+                    .go('/forgot-password', extra: {'email': email});
+                // Navigator.pushNamed(
+                //   context,
+                //   '/forgot-password',
+                //   arguments: {'email': email},
+                // );
               }),
               VerifyPhoneAction((context, _) {
-                Navigator.pushNamed(context, '/phone');
+                GoRouter.of(context).go('/phone');
+                // Navigator.pushNamed(context, '/phone');
               }),
               AuthStateChangeAction<SignedIn>((context, state) {
                 if (!state.user!.emailVerified) {
-                  Navigator.pushNamed(context, '/verify-email');
+                  GoRouter.of(context).go('/verify-email');
+                  // Navigator.pushNamed(context, '/verify-email');
                 } else {
-                  Navigator.pushReplacementNamed(context, '/profile');
+                  GoRouter.of(context).go('/profile');
+                  // Navigator.pushReplacementNamed(context, '/profile');
                 }
               }),
               AuthStateChangeAction<UserCreated>((context, state) {
                 if (!state.credential.user!.emailVerified) {
-                  Navigator.pushNamed(context, '/verify-email');
+                  GoRouter.of(context).go('/verify-email');
+                  // Navigator.pushNamed(context, '/verify-email');
                 } else {
-                  Navigator.pushReplacementNamed(context, '/profile');
+                  GoRouter.of(context).go('/profile');
+                  // Navigator.pushReplacementNamed(context, '/profile');
                 }
               }),
-              mfaAction,
+              AuthStateChangeAction<MFARequired>(
+                (context, state) async {
+                  // final nav = Navigator.of(context);
+                  final nav = GoRouter.of(context);
+
+                  await startMFAVerification(
+                    resolver: state.resolver,
+                    context: context,
+                  );
+
+                  //nav.pushReplacementNamed('/profile');
+                  nav.replaceNamed('/profile');
+                },
+              ),
               EmailLinkSignInAction((context) {
-                Navigator.pushReplacementNamed(context, '/email-link-sign-in');
+                GoRouter.of(context).replaceNamed('/email-link-sign-in');
+                // Navigator.pushReplacementNamed(context, '/email-link-sign-in');
               }),
             ],
             styles: const {
@@ -172,48 +196,65 @@ class FirebaseAuthUIExample extends StatelessWidget {
             },
           );
         },
-        '/verify-email': (context) {
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (BuildContext context, GoRouterState state) {
           return EmailVerificationScreen(
             headerBuilder: headerIcon(Icons.verified),
             sideBuilder: sideIcon(Icons.verified),
             actionCodeSettings: actionCodeSettings,
             actions: [
               EmailVerifiedAction(() {
-                Navigator.pushReplacementNamed(context, '/profile');
+                GoRouter.of(context).replaceNamed('/profile');
+                // Navigator.pushReplacementNamed(context, '/profile');
               }),
               AuthCancelledAction((context) {
                 FirebaseUIAuth.signOut(context: context);
-                Navigator.pushReplacementNamed(context, '/');
+                GoRouter.of(context).replaceNamed('/');
+                // Navigator.pushReplacementNamed(context, '/');
               }),
             ],
           );
         },
-        '/phone': (context) {
+      ),
+      GoRoute(
+        path: '/phone',
+        builder: (BuildContext context, GoRouterState state) {
           return PhoneInputScreen(
             actions: [
               SMSCodeRequestedAction((context, action, flowKey, phone) {
-                Navigator.of(context).pushReplacementNamed(
-                  '/sms',
-                  arguments: {
-                    'action': action,
-                    'flowKey': flowKey,
-                    'phone': phone,
-                  },
-                );
+                GoRouter.of(context).replaceNamed('/sms', extra: {
+                  'action': action,
+                  'flowKey': flowKey,
+                  'phone': phone,
+                });
+                // Navigator.of(context).pushReplacementNamed(
+                //   '/sms',
+                //   arguments: {
+                //     'action': action,
+                //     'flowKey': flowKey,
+                //     'phone': phone,
+                //   },
+                // );
               }),
             ],
             headerBuilder: headerIcon(Icons.phone),
             sideBuilder: sideIcon(Icons.phone),
           );
         },
-        '/sms': (context) {
+      ),
+      GoRoute(
+        path: '/sms',
+        builder: (BuildContext context, GoRouterState state) {
           final arguments = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
 
           return SMSCodeInputScreen(
             actions: [
               AuthStateChangeAction<SignedIn>((context, state) {
-                Navigator.of(context).pushReplacementNamed('/profile');
+                GoRouter.of(context).replaceNamed('/profile');
+                // Navigator.of(context).pushReplacementNamed('/profile');
               })
             ],
             flowKey: arguments?['flowKey'],
@@ -222,7 +263,10 @@ class FirebaseAuthUIExample extends StatelessWidget {
             sideBuilder: sideIcon(Icons.sms_outlined),
           );
         },
-        '/forgot-password': (context) {
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (BuildContext context, GoRouterState state) {
           final arguments = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
 
@@ -233,11 +277,15 @@ class FirebaseAuthUIExample extends StatelessWidget {
             sideBuilder: sideIcon(Icons.lock),
           );
         },
-        '/email-link-sign-in': (context) {
+      ),
+      GoRoute(
+        path: '/email-link-sign-in',
+        builder: (BuildContext context, GoRouterState state) {
           return EmailLinkSignInScreen(
             actions: [
               AuthStateChangeAction<SignedIn>((context, state) {
-                Navigator.pushReplacementNamed(context, '/');
+                GoRouter.of(context).replaceNamed('/');
+                // Navigator.pushReplacementNamed(context, '/');
               }),
             ],
             provider: emailLinkProviderConfig,
@@ -246,31 +294,42 @@ class FirebaseAuthUIExample extends StatelessWidget {
             sideBuilder: sideIcon(Icons.link),
           );
         },
-        '/profile': (context) {
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (BuildContext context, GoRouterState state) {
           return ProfileScreen(
             actions: [
               SignedOutAction((context) {
-                Navigator.pushReplacementNamed(context, '/');
+                GoRouter.of(context).replaceNamed('/');
+                // Navigator.pushReplacementNamed(context, '/');
               }),
-              mfaAction,
+              AuthStateChangeAction<MFARequired>(
+                (context, state) async {
+                  // final nav = Navigator.of(context);
+                  final nav = GoRouter.of(context);
+
+                  await startMFAVerification(
+                    resolver: state.resolver,
+                    context: context,
+                  );
+
+                  //nav.pushReplacementNamed('/profile');
+                  nav.replaceNamed('/profile');
+                },
+              ),
             ],
             actionCodeSettings: actionCodeSettings,
             showMFATile: true,
           );
         },
-        '/blank': (context) {
+      ),
+      GoRoute(
+        path: '/blank',
+        builder: (BuildContext context, GoRouterState state) {
           return const BlankScreen();
         },
-      },
-      title: 'Firebase UI demo',
-      debugShowCheckedModeBanner: false,
-      locale: const Locale('en'),
-      localizationsDelegates: [
-        FirebaseUILocalizations.withDefaultOverrides(const LabelOverrides()),
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        FirebaseUILocalizations.delegate,
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
