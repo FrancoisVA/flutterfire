@@ -1,0 +1,33 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"titleBar.activeBackground": "#794803"
+		},
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Dart & Flutter",
+				"request": "launch",
+				"type": "dart"
+			},
+			{
+				"name": "Dart & Flutter - Web",
+				"request": "launch",
+				"type": "dart",
+				"args": [
+					"-d",
+					"chrome",
+					"--web-port",
+					"5000"
+				],
+			}
+		]
+	}
+}
